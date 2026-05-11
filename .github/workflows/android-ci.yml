@@ -2,6 +2,9 @@ name: Android CI
 
 on:
   pull_request:
+    # `labeled` is added so the instrumented job below fires when someone
+    # applies the `run-instrumented` label after the PR is opened.
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - "android/**"
       - ".github/workflows/android-ci.yml"
