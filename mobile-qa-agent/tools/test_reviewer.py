@@ -65,8 +65,19 @@ def review(provider: LLMProvider, platform: str, detection: dict, diff: str) -> 
     return parsed
 
 
+# Marker used by the test generator to find the agent's structured findings
+# inside a PR comment. Format:
+#   <!-- AI-QA-FINDINGS-JSON: {...json...} -->
+FINDINGS_MARKER = "AI-QA-FINDINGS-JSON"
+
+
 def format_comment(result: dict) -> str:
-    """Render the JSON result into a Markdown comment body."""
+    """Render the JSON result into a Markdown comment body.
+
+    Also appends a hidden HTML comment containing the raw findings JSON so
+    downstream tools (like the OpenAI test generator) can recover the
+    structured data from the PR thread.
+    """
     if result.get("_parse_error"):
         return (
             "### 🤖 Mobile QA Agent\n\n"
@@ -110,4 +121,28 @@ def format_comment(result: dict) -> str:
                 lines.append(f"- {s}")
 
     lines.append(f"\n_Provider: `{result.get('provider', '?')}`_")
+    lines.append(
+        "\n_Tip: comment `/generate-tests` on this PR to auto-generate "
+        "missing tests via OpenAI._"
+    )
+
+    # Hidden machine-readable copy of the findings for downstream tools.
+    findings_json = json.dumps(result, separators=(",", ":"))
+    lines.append(f"\n<!-- {FINDINGS_MARKER}: {findings_json} -->")
+
     return "\n".join(lines)
+
+
+def extract_findings_from_comment(comment_body: str) -> dict | None:
+    """Recover the structured findings JSON embedded by format_comment().
+
+    Returns None if no marker is found.
+    """
+    pattern = rf"<!--\s*{re.escape(FINDINGS_MARKER)}:\s*(\{{.*?\}})\s*-->"
+    m = re.search(pattern, comment_body, re.DOTALL)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return None

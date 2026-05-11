@@ -1,6 +1,7 @@
 requests>=2.32.0
 langgraph>=0.2.0
 typing-extensions>=4.10.0
+python-dotenv>=1.0.1
 
 # Provider SDKs (only the one you pick is needed at runtime, but installing all
 # keeps the agent fully pluggable).

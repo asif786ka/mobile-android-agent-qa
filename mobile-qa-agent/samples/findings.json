@@ -1,0 +1,23 @@
+{
+  "platform": "android",
+  "provider": "anthropic",
+  "summary": "Two test gaps to close: a new pure function and an updated Compose screen.",
+  "missing_unit_tests": [
+    {
+      "file": "android/app/src/main/java/com/example/helloworld/Farewell.kt",
+      "symbol": "Farewell.goodbye()",
+      "note": "New public function has no unit test. Needs coverage for default name, blank input fallback, and trimming."
+    }
+  ],
+  "missing_ui_tests": [
+    {
+      "file": "android/app/src/main/java/com/example/helloworld/HelloScreen.kt",
+      "note": "Composable accepts a name parameter but no UI test verifies the rendered text reflects the provided name."
+    }
+  ],
+  "weak_assertions": [],
+  "flaky_selectors": [],
+  "missing_accessibility": [],
+  "missing_negative_cases": [],
+  "suggested_tests": []
+}

@@ -47,5 +47,5 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
-          BEDROCK_MODEL_ID: ${{ vars.BEDROCK_MODEL_ID || 'anthropic.claude-3-5-sonnet-20241022-v2:0' }}
+          BEDROCK_MODEL_ID: ${{ vars.BEDROCK_MODEL_ID || 'us.amazon.nova-pro-v1:0' }}
         run: python main.py

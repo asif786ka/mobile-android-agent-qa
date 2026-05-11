@@ -17,8 +17,8 @@ def get_provider(name: str | None = None) -> LLMProvider:
         from .openai_provider import OpenAIProvider
         return OpenAIProvider()
     if name == "bedrock":
-        from .bedrock_claude import BedrockClaudeProvider
-        return BedrockClaudeProvider()
+        from .bedrock_claude import BedrockProvider
+        return BedrockProvider()
 
     raise ValueError(
         f"Unknown PROVIDER={name!r}. Expected one of: anthropic, openai, bedrock."

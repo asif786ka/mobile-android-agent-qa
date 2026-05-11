@@ -12,6 +12,16 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
+
+# Load .env from this folder if present (no-op in CI, where vars are set
+# directly by the workflow). Imported defensively so the agent still runs
+# even if python-dotenv isn't installed.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).resolve().parent / ".env")
+except ImportError:
+    pass
 
 from graph import build_graph
 
