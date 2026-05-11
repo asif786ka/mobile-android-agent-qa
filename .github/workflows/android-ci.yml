@@ -53,8 +53,8 @@ jobs:
   instrumented-tests:
     name: Espresso / Compose UI (emulator)
     runs-on: ubuntu-latest
-    # Opt-in via PR label or on push to main, to keep PR feedback fast.
-    if: ${{ github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'run-instrumented') }}
+    # Runs on every PR and on every push to main. Emulator boot adds ~5 min
+    # but gives full coverage of Compose UI tests on every change.
     defaults:
       run:
         working-directory: android
