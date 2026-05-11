@@ -1,0 +1,31 @@
+# --- Android ---
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/captures/
+android/.idea/
+android/*.iml
+android/.cxx/
+
+# --- iOS / Xcode ---
+ios/build/
+ios/DerivedData/
+ios/*.xcuserstate
+ios/**/xcuserdata/
+ios/**/*.xcuserdatad/
+ios/Pods/
+ios/Carthage/
+
+# --- Python (AI agent) ---
+mobile-qa-agent/__pycache__/
+mobile-qa-agent/**/__pycache__/
+mobile-qa-agent/.venv/
+mobile-qa-agent/*.egg-info/
+mobile-qa-agent/.pytest_cache/
+
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp

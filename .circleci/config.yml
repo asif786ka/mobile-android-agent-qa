@@ -1,0 +1,108 @@
+version: 2.1
+
+# CircleCI pipeline for the Android Hello World app + AI QA agent.
+#
+# Two jobs:
+#   - unit_tests : runs ./gradlew testDebugUnitTest on every commit/PR.
+#   - ai_review  : runs the mobile-qa-agent on pull requests and posts a
+#                  review comment on the PR.
+#
+# Required project env vars (set in CircleCI project Settings → Environment Variables):
+#   GITHUB_TOKEN         GitHub Personal Access Token with 'repo' scope (for PR comments)
+#   ANTHROPIC_API_KEY    (default provider)
+#   OPENAI_API_KEY       (only if PROVIDER=openai)
+#   AWS_ACCESS_KEY_ID    (only if PROVIDER=bedrock)
+#   AWS_SECRET_ACCESS_KEY
+#   AWS_REGION
+# Optional:
+#   PROVIDER             anthropic | openai | bedrock   (default: anthropic)
+#   ANTHROPIC_MODEL, OPENAI_MODEL, BEDROCK_MODEL_ID
+
+jobs:
+  unit_tests:
+    docker:
+      - image: cimg/android:2024.04.1
+    working_directory: ~/repo
+    resource_class: large
+    steps:
+      - checkout
+
+      - restore_cache:
+          name: Restore Gradle caches
+          keys:
+            - v1-gradle-{{ checksum "android/build.gradle.kts" }}-{{ checksum "android/app/build.gradle.kts" }}
+            - v1-gradle-
+
+      - run:
+          name: Bootstrap Gradle wrapper if missing
+          working_directory: android
+          command: |
+            if [ ! -f ./gradlew ]; then
+              echo "No gradlew found; generating wrapper..."
+              gradle wrapper --gradle-version 8.7 --distribution-type bin
+            fi
+            chmod +x ./gradlew
+
+      - run:
+          name: Run unit tests
+          working_directory: android
+          command: ./gradlew testDebugUnitTest --stacktrace --no-daemon
+
+      - save_cache:
+          name: Save Gradle caches
+          key: v1-gradle-{{ checksum "android/build.gradle.kts" }}-{{ checksum "android/app/build.gradle.kts" }}
+          paths:
+            - ~/.gradle/caches
+            - ~/.gradle/wrapper
+
+      - store_test_results:
+          path: android/app/build/test-results
+
+      - store_artifacts:
+          path: android/app/build/reports/tests/testDebugUnitTest
+          destination: unit-test-report
+
+  ai_review:
+    docker:
+      - image: cimg/python:3.11
+    working_directory: ~/repo
+    steps:
+      - checkout
+
+      - restore_cache:
+          name: Restore pip cache
+          keys:
+            - v1-pip-{{ checksum "mobile-qa-agent/requirements.txt" }}
+
+      - run:
+          name: Install agent dependencies
+          command: pip install -r mobile-qa-agent/requirements.txt
+
+      - save_cache:
+          name: Save pip cache
+          key: v1-pip-{{ checksum "mobile-qa-agent/requirements.txt" }}
+          paths:
+            - ~/.cache/pip
+
+      - run:
+          name: Run AI QA agent
+          working_directory: mobile-qa-agent
+          # Provider/model values come from project env vars; the agent
+          # auto-detects CircleCI PR context via CIRCLE_PULL_REQUEST.
+          command: |
+            if [ -z "$CIRCLE_PULL_REQUEST" ]; then
+              echo "Not a PR build (no CIRCLE_PULL_REQUEST). Skipping AI review."
+              exit 0
+            fi
+            python main.py
+
+workflows:
+  build_and_review:
+    jobs:
+      - unit_tests
+
+      - ai_review:
+          # Run AI review on every commit; the job itself short-circuits
+          # when there is no associated PR.
+          requires:
+            - unit_tests

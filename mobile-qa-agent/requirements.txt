@@ -1,0 +1,9 @@
+requests>=2.32.0
+langgraph>=0.2.0
+typing-extensions>=4.10.0
+
+# Provider SDKs (only the one you pick is needed at runtime, but installing all
+# keeps the agent fully pluggable).
+anthropic>=0.34.0
+openai>=1.40.0
+boto3>=1.34.0
