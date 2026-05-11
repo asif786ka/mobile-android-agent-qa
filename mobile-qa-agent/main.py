@@ -47,6 +47,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Also print the raw structured result as JSON.",
     )
+    p.add_argument(
+        "--save-findings",
+        metavar="PATH",
+        help="After review, write the structured findings JSON to this path "
+             "so a downstream step (test generator) can consume it directly.",
+    )
     return p.parse_args()
 
 
@@ -64,6 +70,15 @@ def main() -> int:
 
     if args.print_json:
         print(json.dumps(final.get("result", {}), indent=2))
+
+    if args.save_findings:
+        out_path = Path(args.save_findings)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(
+            json.dumps(final.get("result", {}), indent=2),
+            encoding="utf-8",
+        )
+        print(f"Saved findings to {out_path}")
 
     body = final.get("comment_body", "")
     if args.dry_run or args.diff_file:
