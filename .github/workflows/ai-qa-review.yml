@@ -128,37 +128,20 @@ jobs:
         run: ./gradlew testDebugUnitTest --stacktrace
         continue-on-error: true
 
-      # ----------------------------------------------------------------------
-      # 3b. Verify the generated UI tests with an emulator
-      # ----------------------------------------------------------------------
-      - name: Enable KVM (required for the Android emulator)
-        if: steps.review.outputs.has-findings == 'true'
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | \
-            sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-
-      - name: Run instrumented (Compose UI) tests on emulator
-        if: steps.review.outputs.has-findings == 'true'
-        id: ui_tests
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 30
-          target: google_apis
-          arch: x86_64
-          profile: pixel_5
-          script: cd android && ./gradlew connectedDebugAndroidTest --stacktrace
-        continue-on-error: true
+      # UI tests are NOT booted here — booting an emulator inside this workflow
+      # would add ~5-10 min per PR. Instead we rely on android-ci.yml's
+      # `instrumented-tests` job (which uses AVD caching) to verify the
+      # generated UI tests on the bot's commit. If the UI test the AI wrote
+      # turns out to be broken, you'll see a red Compose UI check on the
+      # bot's commit and can revert it.
 
       # ----------------------------------------------------------------------
-      # 4a. Commit if BOTH unit + UI tests passed
+      # 4a. Commit if unit tests pass — UI tests are committed unverified
       # ----------------------------------------------------------------------
       - name: Commit generated tests to the PR branch
         if: |
           steps.review.outputs.has-findings == 'true' &&
-          steps.unit_tests.outcome == 'success' &&
-          steps.ui_tests.outcome == 'success'
+          steps.unit_tests.outcome == 'success'
         run: |
           git config user.email "actions@github.com"
           git config user.name  "github-actions[bot]"
@@ -179,37 +162,32 @@ jobs:
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
 
       # ----------------------------------------------------------------------
-      # 4b. If either phase fails, comment on the PR and do NOT commit
+      # 4b. If unit tests fail, comment on the PR and do NOT commit anything.
+      #
+      # We don't gate on UI tests here — they're verified by android-ci.yml
+      # on the bot's commit. If a generated UI test is broken, you'll see a
+      # red Compose UI check on the auto-commit and can revert it.
       # ----------------------------------------------------------------------
-      - name: Comment on PR if any generated tests fail
+      - name: Comment on PR if generated unit tests fail
         if: |
           steps.review.outputs.has-findings == 'true' &&
-          (steps.unit_tests.outcome == 'failure' || steps.ui_tests.outcome == 'failure')
+          steps.unit_tests.outcome == 'failure'
         uses: actions/github-script@v7
-        env:
-          UNIT_OUTCOME: ${{ steps.unit_tests.outcome }}
-          UI_OUTCOME:   ${{ steps.ui_tests.outcome }}
         with:
           script: |
-            const unit = process.env.UNIT_OUTCOME;
-            const ui   = process.env.UI_OUTCOME;
-            const failed = [];
-            if (unit === 'failure') failed.push('`./gradlew testDebugUnitTest` (unit tests)');
-            if (ui   === 'failure') failed.push('`./gradlew connectedDebugAndroidTest` (Compose UI tests)');
-
             const body = [
-              '### 🤖 AI test generator: generated tests do not pass',
+              '### 🤖 AI test generator: generated unit tests do not pass',
               '',
-              'Claude flagged missing test coverage and OpenAI generated test files,',
-              `but the following test phase(s) failed: ${failed.join(', ')}.`,
-              '',
-              'The bot is **not** committing the generated tests.',
+              'Claude flagged missing test coverage and OpenAI generated test',
+              'files, but `./gradlew testDebugUnitTest` failed. The bot is **not**',
+              'committing the generated tests.',
               '',
               'Check the workflow logs for the failing output, then either fix the',
               'generated code manually or iterate on the agent prompts in',
               '`mobile-qa-agent/prompts/`.',
+              '',
+              '(UI tests are verified separately by the Android CI workflow.)',
             ].join('\n');
-
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
