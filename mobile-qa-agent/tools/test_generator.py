@@ -89,7 +89,16 @@ def generate_tests(
     api_key = openai_api_key or os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY is required for the test generator.")
+
     client = OpenAI(api_key=api_key)
+    # LangSmith tracing for each generated test, if enabled.
+    if os.environ.get("LANGSMITH_TRACING", "").lower() == "true":
+        try:
+            from langsmith.wrappers import wrap_openai
+            client = wrap_openai(client)
+        except Exception:
+            pass
+
     model = openai_model or os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
     out: list[GeneratedTest] = []

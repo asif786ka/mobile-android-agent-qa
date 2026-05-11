@@ -53,9 +53,12 @@ jobs:
       - name: Run generator
         working-directory: mobile-qa-agent
         env:
-          GITHUB_TOKEN:   ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL:   ${{ vars.OPENAI_MODEL || 'gpt-4o-mini' }}
+          GITHUB_TOKEN:      ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL:      ${{ vars.OPENAI_MODEL || 'gpt-4o-mini' }}
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_TRACING: ${{ secrets.LANGSMITH_API_KEY && 'true' || 'false' }}
+          LANGSMITH_PROJECT: ${{ vars.LANGSMITH_PROJECT || 'mobile-qa-agent' }}
         run: python generate_tests.py
 
       - name: React 🚀 on success

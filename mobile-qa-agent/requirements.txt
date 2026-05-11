@@ -2,6 +2,10 @@ requests>=2.32.0
 langgraph>=0.2.0
 typing-extensions>=4.10.0
 python-dotenv>=1.0.1
+# LangSmith — optional but auto-enabled when LANGSMITH_API_KEY is set.
+# Provides trace tree + per-LLM-call observability for the reviewer and the
+# test generator. Safe to leave installed even with no API key configured.
+langsmith>=0.1.83
 
 # Provider SDKs (only the one you pick is needed at runtime, but installing all
 # keeps the agent fully pluggable).

@@ -64,6 +64,11 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION:         ${{ vars.AWS_REGION || 'us-east-1' }}
           BEDROCK_MODEL_ID:   ${{ vars.BEDROCK_MODEL_ID || 'us.amazon.nova-pro-v1:0' }}
+
+          # LangSmith observability — only active when the API key secret is set.
+          LANGSMITH_API_KEY:  ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_TRACING:  ${{ secrets.LANGSMITH_API_KEY && 'true' || 'false' }}
+          LANGSMITH_PROJECT:  ${{ vars.LANGSMITH_PROJECT || 'mobile-qa-agent' }}
         run: |
           mkdir -p artifacts
           python main.py --save-findings artifacts/findings.json
@@ -87,6 +92,9 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL:   ${{ vars.OPENAI_MODEL || 'gpt-4o-mini' }}
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_TRACING: ${{ secrets.LANGSMITH_API_KEY && 'true' || 'false' }}
+          LANGSMITH_PROJECT: ${{ vars.LANGSMITH_PROJECT || 'mobile-qa-agent' }}
         run: |
           python generate_tests.py \
             --findings-file artifacts/findings.json \
