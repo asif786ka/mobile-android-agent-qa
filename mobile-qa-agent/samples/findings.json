@@ -4,8 +4,8 @@
   "summary": "Two test gaps to close: a new pure function and an updated Compose screen.",
   "missing_unit_tests": [
     {
-      "file": "android/app/src/main/java/com/example/helloworld/Farewell.kt",
-      "symbol": "Farewell.goodbye()",
+      "file": "android/app/src/main/java/com/example/helloworld/WelcomeOnboard.kt",
+      "symbol": "WelcomeOnboard.welcome()",
       "note": "New public function has no unit test. Needs coverage for default name, blank input fallback, and trimming."
     }
   ],
