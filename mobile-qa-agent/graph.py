@@ -30,6 +30,7 @@ class AgentState(TypedDict, total=False):
     platform: str
     result: dict
     comment_body: str
+    post_failed: bool         # set true when the post node refuses to publish
 
 
 def _node_fetch_diff(state: AgentState) -> AgentState:
@@ -93,6 +94,24 @@ def _node_format(state: AgentState) -> AgentState:
 def _node_post(state: AgentState) -> AgentState:
     if state.get("dry_run"):
         return {}
+
+    # Refuse to publish parse-failure comments to the PR. The previous
+    # behaviour (silently posting a "Could not parse a structured response"
+    # comment with the raw model output) just littered PRs with broken
+    # reviews — see the LangSmith Engine alert
+    # "Review JSON parse failures silently posted to PR as fallback comment".
+    # If parsing genuinely failed even after repair + retry, fail the CI run
+    # loudly so the dev knows to re-trigger or escalate.
+    if (state.get("result") or {}).get("_parse_error"):
+        import sys
+        print(
+            "[post] Reviewer produced unparseable JSON even after json_repair "
+            "and one LLM retry. NOT publishing fallback comment to the PR. "
+            "Failing the CI run instead.",
+            file=sys.stderr, flush=True,
+        )
+        return {"post_failed": True}
+
     github_diff.post_review_comment(state["pr_context"], state["comment_body"])
     return {}
 

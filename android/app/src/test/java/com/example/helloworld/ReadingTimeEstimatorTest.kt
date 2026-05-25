@@ -47,4 +47,57 @@ class ReadingTimeEstimatorTest {
     fun minutesToRead_zeroWpm_throwsException() {
         ReadingTimeEstimator.minutesToRead("hello", wordsPerMinute = 0)
     }
+
+    @Test
+    fun format_longLabel_blankText_returnsLessThanOneMinute() {
+        assertEquals("< 1 minute read", ReadingTimeEstimator.format("", longLabel = true))
+    }
+
+    @Test
+    fun format_longLabel_singleMinute_usesSingularLabel() {
+        assertEquals("1 minute read", ReadingTimeEstimator.format("short piece", longLabel = true))
+    }
+
+    @Test
+    fun format_longLabel_multipleMinutes_usesPluralLabel() {
+        val words = List(450) { "w" }.joinToString(" ")
+        assertEquals("3 minutes read", ReadingTimeEstimator.format(words, longLabel = true))
+    }
+
+    @Test
+    fun format_longLabel_zeroWords_returnsLessThanOneMinute() {
+        assertEquals("< 1 minute read", ReadingTimeEstimator.format(null, longLabel = true))
+    }
+
+    @Test
+    fun format_longLabel_boundaryCheck() {
+        assertEquals("1 minute read", ReadingTimeEstimator.format("word word word word word", wordsPerMinute = 5, longLabel = true))
+    }
+
+    @Test
+    fun format_defaultLongLabelIsFalse() {
+        assertEquals("< 1 min read", ReadingTimeEstimator.format(""))
+    }
+
+    // New tests to cover the gaps
+    @Test
+    fun format_longLabel_withNullText_returnsLessThanOneMinute() {
+        assertEquals("< 1 minute read", ReadingTimeEstimator.format(null, longLabel = true))
+    }
+
+    @Test
+    fun format_longLabel_withExactlyOneMinute_returnsSingularLabel() {
+        assertEquals("1 minute read", ReadingTimeEstimator.format("word word word word", longLabel = true))
+    }
+
+    @Test
+    fun format_longLabel_withMoreThanOneMinute_returnsPluralLabel() {
+        val words = List(450) { "word" }.joinToString(" ")
+        assertEquals("3 minutes read", ReadingTimeEstimator.format(words, longLabel = true))
+    }
+
+    @Test
+    fun format_longLabel_boundary_wpmIsOne() {
+        assertEquals("1 minute read", ReadingTimeEstimator.format("word word", wordsPerMinute = 1, longLabel = true))
+    }
 }
