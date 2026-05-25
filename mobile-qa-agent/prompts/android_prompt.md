@@ -14,6 +14,15 @@ Frameworks you care about:
 
 What to look for:
 - New public functions / classes with no corresponding unit test.
+- **Modified public functions whose behavior changed** (new branches, new
+  parameters, changed defaults, new return values, new edge cases) and whose
+  existing test file no longer covers the new behavior. Flag these the same
+  way as new functions — the downstream generator runs in **amend mode** and
+  will merge new test methods into the existing file without losing the ones
+  already there.
+- **Modified `@Composable` UI** whose rendered output or interaction surface
+  changed (new `testTag`s, new conditional UI, new parameters) without a
+  matching update to the existing UI test.
 - New `@Composable` UI with no Compose UI test, or only a "is displayed" check
   without an `assertTextEquals` / semantic assertion.
 - Assertions that only check non-null instead of expected values.
@@ -22,6 +31,12 @@ What to look for:
 - Missing accessibility (`contentDescription`, semantics, focus order).
 - Flaky patterns: `Thread.sleep`, hard-coded waits, network in unit tests,
   shared mutable state across tests.
+
+When flagging a *modified* (rather than new) symbol, the `note` field should
+describe specifically **what changed** in the diff and **which test methods
+are now missing or insufficient** — that note is fed verbatim to the test
+generator, so it's how you tell the generator what new cases to add on top
+of the existing file.
 
 ## Output format
 

@@ -215,8 +215,13 @@ jobs:
           git config user.email "actions@github.com"
           git config user.name  "github-actions[bot]"
 
-          # Only stage the test directories — never production code
+          # Stage the test directories (never production code) and the
+          # auto-generated USAGE.md cost summary. USAGE.md gets refreshed by
+          # main.py / generate_tests.py at the end of each run.
           git add -A android/app/src/test/ android/app/src/androidTest/
+          if [ -f mobile-qa-agent/USAGE.md ]; then
+            git add mobile-qa-agent/USAGE.md
+          fi
 
           if git diff --staged --quiet; then
             echo "No new test files to commit."
@@ -256,11 +261,34 @@ jobs:
           MAX_FIX_ATTEMPTS: ${{ env.MAX_FIX_ATTEMPTS }}
         with:
           script: |
+            const fs = require('fs');
             const passed = process.env.TESTS_PASSED === 'true';
             const attempts = process.env.FIX_ATTEMPTS || '0';
             const max = process.env.MAX_FIX_ATTEMPTS || '2';
 
-            const body = passed
+            // Load this run's LLM cost summary (written by usage_tracker.write_run_cost()).
+            // Falls back to a quiet "—" line if the file is missing.
+            let costLine = '';
+            try {
+              const raw = fs.readFileSync('mobile-qa-agent/artifacts/run_cost.json', 'utf8');
+              const run = JSON.parse(raw);
+              const total = run.total || { calls: 0, cost_usd: 0,
+                                            input_tokens: 0, output_tokens: 0 };
+              const byProv = Object.entries(run.by_provider || {})
+                .map(([p, b]) => `${p} $${Number(b.cost_usd).toFixed(4)}`)
+                .join(', ') || 'none';
+              costLine =
+                `\n---\n` +
+                `**LLM usage this run:** ${total.calls} call(s), ` +
+                `${Number(total.input_tokens).toLocaleString()} in / ` +
+                `${Number(total.output_tokens).toLocaleString()} out tokens, ` +
+                `**$${Number(total.cost_usd).toFixed(4)}** total (${byProv}). ` +
+                `Month-to-date totals: [USAGE.md](../blob/${context.payload.pull_request.head.ref}/mobile-qa-agent/USAGE.md).`;
+            } catch (e) {
+              costLine = `\n---\n_LLM cost summary not available for this run._`;
+            }
+
+            const body = (passed
               ? [
                   '### 🤖 AI test generator: unit tests pass',
                   '',
@@ -268,7 +296,7 @@ jobs:
                   'The bot committed the changes to this PR branch.',
                   '',
                   '_(UI tests are verified separately by the Android CI workflow on the bot\'s commit.)_',
-                ].join('\n')
+                ]
               : [
                   `### 🤖 AI test generator: unit tests still failing after ${max} fix attempt(s)`,
                   '',
@@ -280,7 +308,8 @@ jobs:
                   'on the agent prompts in `mobile-qa-agent/prompts/`.',
                   '',
                   '_(UI tests are verified separately by the Android CI workflow on the bot\'s commit.)_',
-                ].join('\n');
+                ]
+            ).join('\n') + costLine;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
