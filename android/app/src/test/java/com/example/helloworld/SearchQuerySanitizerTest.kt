@@ -42,10 +42,9 @@ class SearchQuerySanitizerTest {
 
     @Test
     fun sanitize_maxLenLimitsOutput() {
-        // Sanitizer pipeline: trim → strip punct → collapse whitespace → lowercase → take(maxLen).
-        // Input has no punctuation and is already lowercase, so the truncation is exact: 10 chars.
+        // Pipeline ends with word-boundary truncation when the maxLen cut lands inside a token.
         val result = SearchQuerySanitizer.sanitize("a very long input string that exceeds the maximum length", 10)
-        assertEquals("a very lon", result)
+        assertEquals("a very", result)
     }
 
     @Test

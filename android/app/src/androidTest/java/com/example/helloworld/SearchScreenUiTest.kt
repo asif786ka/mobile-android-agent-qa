@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import org.junit.Rule
 import org.junit.Test
 
@@ -44,9 +45,7 @@ class SearchScreenUiTest {
         composeRule.onNodeWithTag(SEARCH_SANITIZED_TAG)
             .assertIsDisplayed()
             .assertTextEquals("Start typing to search…")
-        composeRule.onNodeWithTag(SEARCH_SANITIZED_TAG)
-            .assertTextEquals("Type to search…")
-            .assertIsDisplayed().assertDoesNotExist()
+        composeRule.onNodeWithText("Type to search…").assertDoesNotExist()
     }
 
     @Test
@@ -55,7 +54,7 @@ class SearchScreenUiTest {
         composeRule.setContent { SearchScreen(rawQuery = rawQuery, maxLen = 30) }
         composeRule.onNodeWithTag(SEARCH_SANITIZED_TAG)
             .assertIsDisplayed()
-            .assertTextEquals("This is a long search")
+            .assertTextEquals("this is a long search query")
     }
 
     @Test
@@ -65,9 +64,7 @@ class SearchScreenUiTest {
         composeRule.onNodeWithTag(SEARCH_SANITIZED_TAG)
             .assertIsDisplayed()
             .assertTextEquals("hello")
-        composeRule.onNodeWithTag(SEARCH_SANITIZED_TAG)
-            .assertTextEquals("Type to search…")
-            .assertDoesNotExist()
+        composeRule.onNodeWithText("Type to search…").assertDoesNotExist()
     }
 
     @Test
@@ -76,9 +73,7 @@ class SearchScreenUiTest {
         composeRule.onNodeWithTag(SEARCH_SANITIZED_TAG)
             .assertIsDisplayed()
             .assertTextEquals("Start typing to search…")
-        composeRule.onNodeWithTag(SEARCH_SANITIZED_TAG)
-            .assertTextEquals("Type to search…")
-            .assertDoesNotExist()
+        composeRule.onNodeWithText("Type to search…").assertDoesNotExist()
     }
 
     @Test
@@ -88,8 +83,6 @@ class SearchScreenUiTest {
         composeRule.onNodeWithTag(SEARCH_SANITIZED_TAG)
             .assertIsDisplayed()
             .assertTextEquals("valid input")
-        composeRule.onNodeWithTag(SEARCH_SANITIZED_TAG)
-            .assertTextEquals("Start typing to search…")
-            .assertDoesNotExist()
+        composeRule.onNodeWithText("Start typing to search…").assertDoesNotExist()
     }
 }
