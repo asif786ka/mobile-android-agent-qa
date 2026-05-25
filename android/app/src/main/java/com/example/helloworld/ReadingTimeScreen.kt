@@ -18,6 +18,7 @@ const val READING_TIME_TAG = "reading_time_text"
 fun ReadingTimeScreen(
     articleText: String = "",
     wordsPerMinute: Int = ReadingTimeEstimator.DEFAULT_WORDS_PER_MINUTE,
+    longLabel: Boolean = false,
 ) {
     Box(
         modifier = Modifier
@@ -26,7 +27,7 @@ fun ReadingTimeScreen(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = ReadingTimeEstimator.format(articleText, wordsPerMinute),
+            text = ReadingTimeEstimator.format(articleText, wordsPerMinute, longLabel),
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.testTag(READING_TIME_TAG),
         )

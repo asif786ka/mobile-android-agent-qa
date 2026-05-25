@@ -84,6 +84,14 @@ def main() -> int:
     if args.dry_run or args.diff_file:
         # Local / dry-run: just print the rendered comment.
         print(body)
+    elif final.get("post_failed"):
+        # The post node refused to publish a parse-failure comment (see
+        # graph._node_post). Still emit a short log line so CI surfaces it.
+        print(
+            f"Skipped publishing review on "
+            f"{final['pr_context'].repo}#{final['pr_context'].number} "
+            "due to unrecoverable parse failure."
+        )
     else:
         # In Actions, the post step already ran; emit a short log line.
         print(f"Posted review on {final['pr_context'].repo}#{final['pr_context'].number}")
@@ -95,6 +103,12 @@ def main() -> int:
         write_run_cost()
     except Exception as exc:  # noqa: BLE001
         print(f"[main] usage rollup failed (non-fatal): {exc}")
+
+    # Non-zero exit when we couldn't publish a review — so the CI job is
+    # marked failed and the dev knows to re-run, rather than seeing a green
+    # check next to a missing/garbage review comment.
+    if final.get("post_failed"):
+        return 2
 
     return 0
 
