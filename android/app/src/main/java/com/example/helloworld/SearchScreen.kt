@@ -22,7 +22,7 @@ fun SearchScreen(
     maxLen: Int = SearchQuerySanitizer.DEFAULT_MAX_LEN,
 ) {
     val sanitized = SearchQuerySanitizer.sanitize(rawQuery, maxLen)
-    val display = if (sanitized.isEmpty()) "Type to search…" else sanitized
+    val display = if (sanitized.isEmpty()) "Start typing to search…" else sanitized
 
     Column(
         modifier = Modifier

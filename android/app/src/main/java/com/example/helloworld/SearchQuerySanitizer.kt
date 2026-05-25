@@ -8,13 +8,14 @@ package com.example.helloworld
  *  - Collapse runs of internal whitespace into a single space.
  *  - Strip ASCII punctuation (anything in [!"#$%&'()*+,\-./:;<=>?@\[\\\]^_`{|}~]).
  *  - Lowercase using [java.util.Locale.ROOT] for stable, locale-independent behavior.
- *  - Cap the result to [maxLen] characters (no ellipsis — the search index handles
+ *  - Cap the result to [maxLen] characters, preferring a word boundary when the
+ *    cut would otherwise split a token (no ellipsis — the search index handles
  *    truncation on its end).
  *
  * Pure JVM logic — unit-testable without instrumentation.
  */
 object SearchQuerySanitizer {
-    const val DEFAULT_MAX_LEN: Int = 64
+    const val DEFAULT_MAX_LEN: Int = 80
 
     /** Returned when the input is null, empty, or only whitespace/punctuation. */
     const val EMPTY_QUERY: String = ""
@@ -31,7 +32,17 @@ object SearchQuerySanitizer {
         if (collapsed.isEmpty()) return EMPTY_QUERY
 
         val lowered = collapsed.lowercase(java.util.Locale.ROOT)
-        return if (lowered.length <= maxLen) lowered else lowered.take(maxLen)
+        return truncateToMaxLen(lowered, maxLen)
+    }
+
+    private fun truncateToMaxLen(lowered: String, maxLen: Int): String {
+        if (lowered.length <= maxLen) return lowered
+        val chunk = lowered.take(maxLen)
+        val lastSpace = chunk.lastIndexOf(' ')
+        if (lastSpace > 0) {
+            return chunk.take(lastSpace)
+        }
+        return chunk
     }
 
     /** Returns true if the sanitized form of [raw] is non-empty. */
