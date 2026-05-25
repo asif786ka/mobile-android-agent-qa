@@ -1,0 +1,39 @@
+package com.example.helloworld
+
+import org.junit.Test
+import org.junit.Assert.assertEquals
+
+class ArticleTeaserFormatterTest {
+    @Test
+    fun defaultTeaser_isBreakingNews() {
+        assertEquals("Breaking news", ArticleTeaserFormatter.DEFAULT_TEASER)
+    }
+
+    @Test
+    fun headline_blankTeaser_returnsDefaultTeaser() {
+        val result = ArticleTeaserFormatter.headline("")
+        assertEquals("Breaking news", result)
+    }
+
+    @Test
+    fun headline_oversizedTeaser_trimsAndAddsEllipsis() {
+        val result = ArticleTeaserFormatter.headline("This is a very long teaser that exceeds the max length set.", 20)
+        assertEquals("This is a ver…", result)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun headline_zeroMaxLength_throwsException() {
+        ArticleTeaserFormatter.headline("Valid teaser", 0)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun headline_negativeMaxLength_throwsException() {
+        ArticleTeaserFormatter.headline("Valid teaser", -5)
+    }
+
+    @Test
+    fun headline_validTeaser_returnsTeaser() {
+        val result = ArticleTeaserFormatter.headline("Hello World!", 50)
+        assertEquals("Hello World!", result)
+    }
+}
