@@ -223,6 +223,16 @@ def main() -> int:
     written = write_tests(valid, REPO_ROOT, overwrite=args.overwrite)
     print(f"Wrote {len(written)} test file(s).")
 
+    # Refresh USAGE.md (month-to-date) + this run's cost summary so the
+    # workflow's PR-comment step can show the cost of this run. Best-effort —
+    # don't fail the generator if tracking blows up for any reason.
+    try:
+        from tools.usage_tracker import write_usage_md, write_run_cost
+        write_usage_md()
+        write_run_cost()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[generate_tests] usage rollup failed (non-fatal): {exc}")
+
     # 4. If in CI, commit + open follow-up PR
     if repo and pr_number:
         token = os.environ["GITHUB_TOKEN"]

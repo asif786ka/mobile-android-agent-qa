@@ -88,6 +88,14 @@ def main() -> int:
         # In Actions, the post step already ran; emit a short log line.
         print(f"Posted review on {final['pr_context'].repo}#{final['pr_context'].number}")
 
+    # Refresh USAGE.md (month-to-date) + this run's cost summary. Best-effort.
+    try:
+        from tools.usage_tracker import write_usage_md, write_run_cost
+        write_usage_md()
+        write_run_cost()
+    except Exception as exc:  # noqa: BLE001
+        print(f"[main] usage rollup failed (non-fatal): {exc}")
+
     return 0
 
 

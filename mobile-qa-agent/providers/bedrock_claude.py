@@ -16,6 +16,9 @@ from .base import LLMProvider
 class BedrockProvider(LLMProvider):
     name = "bedrock"
 
+    # Populated after each generate() call. See AnthropicProvider for details.
+    last_usage: dict | None = None
+
     def __init__(self, model_id: str | None = None, region: str | None = None) -> None:
         import boto3
 
@@ -43,6 +46,12 @@ class BedrockProvider(LLMProvider):
             ],
             inferenceConfig={"maxTokens": max_tokens},
         )
+        usage = resp.get("usage") or {}
+        self.last_usage = {
+            "model": self._model_id,
+            "input_tokens": int(usage.get("inputTokens") or 0),
+            "output_tokens": int(usage.get("outputTokens") or 0),
+        }
         blocks = resp["output"]["message"]["content"]
         return "".join(b.get("text", "") for b in blocks).strip()
 

@@ -9,6 +9,9 @@ from .base import LLMProvider
 class OpenAIProvider(LLMProvider):
     name = "openai"
 
+    # Populated after each generate() call. See AnthropicProvider for details.
+    last_usage: dict | None = None
+
     def __init__(self, model: str | None = None) -> None:
         from openai import OpenAI
 
@@ -33,5 +36,11 @@ class OpenAIProvider(LLMProvider):
             max_tokens=max_tokens,
             messages=[{"role": "user", "content": prompt}],
         )
+        usage = getattr(resp, "usage", None)
+        self.last_usage = {
+            "model": self._model,
+            "input_tokens": getattr(usage, "prompt_tokens", 0) or 0,
+            "output_tokens": getattr(usage, "completion_tokens", 0) or 0,
+        }
         choice = resp.choices[0]
         return (choice.message.content or "").strip()

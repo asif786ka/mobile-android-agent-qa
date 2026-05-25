@@ -66,6 +66,23 @@ def _node_review(state: AgentState) -> AgentState:
     provider = get_provider(state.get("provider_name"))
     ctx = state["pr_context"]
     result = review(provider, state["platform"], state["detection"], ctx.diff)
+
+    # Record this provider call's token usage + estimated cost.
+    usage = getattr(provider, "last_usage", None) or {}
+    if usage:
+        try:
+            from tools.usage_tracker import record_usage
+            record_usage(
+                provider=provider.name,
+                model=usage.get("model", ""),
+                input_tokens=usage.get("input_tokens", 0),
+                output_tokens=usage.get("output_tokens", 0),
+                role="reviewer",
+            )
+        except Exception:
+            # Usage tracking is best-effort; never fail the review on it.
+            pass
+
     return {"result": result}
 
 
