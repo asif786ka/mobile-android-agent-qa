@@ -9,7 +9,7 @@ class AttemptRepairTest {
 
     @Test
     fun attemptRepair_validJson_returnsDict() {
-        val raw = """{"key": "value"}"""
+        val raw = """{\"key\": \"value\"}"""
         val result = _attempt_repair(raw)
         assertNotNull(result)
         assertEquals(mapOf("key" to "value"), result)
@@ -18,7 +18,7 @@ class AttemptRepairTest {
     @Test
     fun attemptRepair_jsonRepairNotInstalled_returnsNull() {
         // Simulate ImportError
-        val result = _attempt_repair("{")
+        val result = _attempt_repair("{"
         assertNull(result)
     }
 
@@ -43,14 +43,22 @@ class AttemptRepairTest {
 
     @Test
     fun attemptRepair_stripsMarkdownFences() {
-        val raw = """
-            ```json
-            {"key": "value"}
-            ```
-        """.trimIndent()
+        val raw = """\n            ```json\n            {\"key\": \"value\"}\n            ```\n        """.trimIndent()
         val result = _attempt_repair(raw)
         assertNotNull(result)
         assertEquals(mapOf("key" to "value"), result)
     }
 
+    @Test
+    fun attemptRepair_unparseableInput_returnsNull() {
+        val result = _attempt_repair("this is not JSON")
+        assertNull(result)
+    }
+
+    @Test
+    fun attemptRepair_invalidSchemaJson_returnsNull() {
+        val invalidJson = "{\"key\":\"value\", \"unexpectedField\":\"unexpectedValue\"}"
+        val result = _attempt_repair(invalidJson)
+        assertNull(result)
+    }
 }

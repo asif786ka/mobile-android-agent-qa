@@ -42,7 +42,6 @@ class SearchQuerySanitizerTest {
 
     @Test
     fun sanitize_maxLenLimitsOutput() {
-        // Pipeline ends with word-boundary truncation when the maxLen cut lands inside a token.
         val result = SearchQuerySanitizer.sanitize("a very long input string that exceeds the maximum length", 10)
         assertEquals("a very", result)
     }
@@ -149,4 +148,49 @@ class SearchQuerySanitizerTest {
         val result = SearchQuerySanitizer.sanitize("abcdefghij", 5)
         assertEquals("abcde", result)
     }
+
+    @Test
+    fun sanitize_inputWithSpecialCharacters_returnsSanitizedString() {
+        val result = SearchQuerySanitizer.sanitize("hello@world#2023!")
+        assertEquals("hello world 2023", result)
+    }
+
+    @Test
+    fun sanitize_inputWithControlCharacters_returnsSanitizedString() {
+        val result = SearchQuerySanitizer.sanitize("hello\u000bworld")
+        assertEquals("hello world", result)
+    }
+
+    @Test
+    fun sanitize_longUnicodeInput_truncatesCorrectly() {
+        val longUnicodeInput = "a\u2013".repeat(100)
+        val result = SearchQuerySanitizer.sanitize(longUnicodeInput, 10)
+        assertEquals("a…", result)
+    }
+
+    @Test
+    fun sanitize_inputWithExcessiveWhitespace_returnsSanitizedString() {
+        val result = SearchQuerySanitizer.sanitize("    ")
+        assertEquals(SearchQuerySanitizer.EMPTY_QUERY, result)
+    }
+
+    // New tests for additional edge cases
+    @Test
+    fun sanitize_inputWithWhitespaceAndPunctuation_returnsEmptyQuery() {
+        val result = SearchQuerySanitizer.sanitize("   !!   ")
+        assertEquals(SearchQuerySanitizer.EMPTY_QUERY, result)
+    }
+
+    @Test
+    fun sanitize_specialCharactersAtEdges_stripsCorrectly() {
+        val result = SearchQuerySanitizer.sanitize("$%^&*hello^&*()  ")
+        assertEquals("hello", result)
+    }
+
+    @Test
+    fun sanitize_longInput_returnsSanitizedString() {
+        val result = SearchQuerySanitizer.sanitize("a long input string that does not contain any invalid characters, and is quite lengthy", 60)
+        assertEquals("a long input string that does not contain any invalid characters", result)
+    }
+
 }

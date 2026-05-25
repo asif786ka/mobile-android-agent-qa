@@ -6,6 +6,8 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import org.junit.Rule
 import org.junit.Test
 
@@ -84,5 +86,52 @@ class SearchScreenUiTest {
             .assertIsDisplayed()
             .assertTextEquals("valid input")
         composeRule.onNodeWithText("Start typing to search…").assertDoesNotExist()
+    }
+
+    // New test for loading state
+    @Test
+    fun showsLoadingIndicator_whenQueryIsInFlight() {
+        composeRule.setContent { SearchScreen(rawQuery = "Loading…") }
+        composeRule.onNodeWithTag("loading_indicator_tag") // replace with actual loading indicator tag
+            .assertIsDisplayed()
+    }
+
+    // New test for error message display
+    @Test
+    fun displaysErrorMessage_whenSearchFails() {
+        composeRule.setContent { SearchScreen(rawQuery = "error") }
+        composeRule.onNodeWithTag("error_message_tag") // replace with actual error message tag
+            .assertIsDisplayed()
+            .assertTextEquals("Search failed, please try again.") // adjust based on actual error message
+    }
+
+    // New test for empty results placeholder
+    @Test
+    fun displaysEmptyResultsPlaceholder_whenNoResultsFound() {
+        composeRule.setContent { SearchScreen(rawQuery = "no results") }
+        composeRule.onNodeWithTag("empty_results_placeholder_tag") // replace with actual empty results tag
+            .assertIsDisplayed()
+            .assertTextEquals("No results found.") // adjust based on actual empty results message
+    }
+
+    // New interaction test for typing in the search field
+    @Test
+    fun typingInSearchField_showsResults() {
+        composeRule.setContent { SearchScreen() }
+        composeRule.onNodeWithTag(SEARCH_INPUT_LABEL_TAG).performTextInput("Hello")
+        composeRule.onNodeWithTag(SEARCH_SANITIZED_TAG)
+            .assertIsDisplayed()
+            .assertTextEquals("hello")
+    }
+
+    // New test for clear/cancel button functionality
+    @Test
+    fun clearButtonResetsQueryAndResults() {
+        composeRule.setContent { SearchScreen(rawQuery = "Some Query") }
+        composeRule.onNodeWithTag("clear_button_tag") // replace with actual clear button tag
+            .performClick()
+        composeRule.onNodeWithTag(SEARCH_SANITIZED_TAG)
+            .assertIsDisplayed()
+            .assertTextEquals("Start typing to search…")
     }
 }
