@@ -65,6 +65,7 @@ dependencies {
 
     // Unit tests
     testImplementation("junit:junit:4.13.2")
+    testImplementation("com.google.code.gson:gson:2.11.0")
     testImplementation("org.mockito:mockito-core:5.12.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
 

@@ -2,15 +2,16 @@ package com.example.helloworld
 
 import org.junit.Test
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertThrows
 
 class AttemptRepairTest {
 
     @Test
     fun attemptRepair_validJson_returnsDict() {
-        val raw = "{\"key\": \"value\"}"
+        val raw = """{"key": "value"}"""
         val result = _attempt_repair(raw)
+        assertNotNull(result)
         assertEquals(mapOf("key" to "value"), result)
     }
 
@@ -42,8 +43,13 @@ class AttemptRepairTest {
 
     @Test
     fun attemptRepair_stripsMarkdownFences() {
-        val raw = "```json\n{\"key\": \"value\"}\n```"
+        val raw = """
+            ```json
+            {"key": "value"}
+            ```
+        """.trimIndent()
         val result = _attempt_repair(raw)
+        assertNotNull(result)
         assertEquals(mapOf("key" to "value"), result)
     }
 
