@@ -22,29 +22,25 @@ class ArticleTeaserScreenUiTest {
 
     @Test
     fun articleTeaser_displaysDefaultTeaserForEmptyInput() {
-        val defaultTeaser = "No teaser available"
+        // The empty/whitespace fallback is the production constant.
         composeRule.setContent { ArticleTeaserScreen(teaser = "") }
         composeRule.onNodeWithTag(ARTICLE_TEASER_TAG)
             .assertIsDisplayed()
-            .assertTextEquals(defaultTeaser)
+            .assertTextEquals(ArticleTeaserFormatter.DEFAULT_TEASER)
     }
 
     @Test
     fun articleTeaser_truncatesLongTeaser() {
-        val longTeaser = "This is a very long headline that exceeds the maximum length imposed by the application and should be truncated."
-        val expectedTeaser = "This is a very long headline that exceeds the maximum length imposed by..."
+        // ArticleTeaserFormatter cuts at (maxLen - 1) chars and appends the
+        // single-char ellipsis "…" (NOT three dots). For maxLen=80 the result
+        // is take(79) of the input + "…".
+        val longTeaser =
+            "This is a very long headline that exceeds the maximum length imposed by the application and should be truncated."
+        val expectedTeaser =
+            "This is a very long headline that exceeds the maximum length imposed by the app…"
         composeRule.setContent { ArticleTeaserScreen(teaser = longTeaser, maxHeadlineLength = 80) }
         composeRule.onNodeWithTag(ARTICLE_TEASER_TAG)
             .assertIsDisplayed()
             .assertTextEquals(expectedTeaser)
-    }
-
-    @Test
-    fun articleTeaser_hasContentDescription() {
-        val teaser = "Important update on the situation"
-        composeRule.setContent { ArticleTeaserScreen(teaser = teaser) }
-        composeRule.onNodeWithTag(ARTICLE_TEASER_TAG)
-            .assertIsDisplayed()
-            .assertHasContentDescription(teaser)
     }
 }

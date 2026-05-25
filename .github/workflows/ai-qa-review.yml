@@ -247,7 +247,23 @@ jobs:
           fi
 
           git commit -m "$MSG"
-          git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
+
+          # Retry the push to absorb transient GitHub 5xx errors (we've seen
+          # the API return 500 "Internal Server Error" on otherwise valid
+          # pushes). Bounded: up to 5 attempts with linear backoff.
+          PUSH_MAX_ATTEMPTS=5
+          PUSH_BACKOFF_SECS=5
+          attempt=0
+          until git push origin "HEAD:${{ github.event.pull_request.head.ref }}"; do
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge "$PUSH_MAX_ATTEMPTS" ]; then
+              echo "::error::git push failed after $PUSH_MAX_ATTEMPTS attempts"
+              exit 1
+            fi
+            wait_for=$((PUSH_BACKOFF_SECS * attempt))
+            echo "::warning::git push attempt $attempt failed; retrying in ${wait_for}s..."
+            sleep "$wait_for"
+          done
 
       # ----------------------------------------------------------------------
       # 5. Post a status comment on the PR with the final outcome

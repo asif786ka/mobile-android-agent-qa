@@ -22,6 +22,45 @@ with a reason — propose adding a UI test instead.
   `greet_blankName_fallsBackToWorld` — NOT `testGreet`.
 - No `Thread.sleep`, no hard-coded waits, no shared mutable state.
 
+## Computing expected values — STRICT
+
+**Every assertion's expected value must be derived by tracing the production
+source you were given, not by guessing.** Hallucinated expected values are
+the #1 cause of bot-generated test failures. Concretely:
+
+- For string-manipulation methods, count characters by hand and write the
+  exact result. If the source has `take(maxLen - 1) + "…"` and you call it
+  with `maxLen=20`, the expected value is the first 19 characters of the
+  input followed by `…` — not a guess at "around 14 chars".
+- **Copy special characters literally from the production source.** If the
+  source uses the single-char Unicode ellipsis `…` (U+2026), do NOT
+  substitute three ASCII dots `...`. If the source uses curly quotes,
+  non-breaking spaces, or any other non-ASCII glyph, copy it byte-for-byte.
+- **Reference production constants by name instead of duplicating their
+  values as string literals.** If the source defines
+  `const val DEFAULT_TEASER = "Breaking news"`, write
+  `assertEquals(ArticleTeaserFormatter.DEFAULT_TEASER, result)` — not
+  `assertEquals("Breaking news", result)`. This makes the test resilient to
+  future constant changes and prevents you from getting the literal wrong.
+- Do not assert behaviour that isn't visibly present in the production
+  source. If the class doesn't throw, doesn't validate, doesn't lowercase,
+  don't write a test that expects it to.
+- If the input fed into a function will trigger `require { … }` or
+  `IllegalArgumentException`, use `assertThrows(IllegalArgumentException::class.java)`
+  — never wrap such cases in `try/catch` with `fail()`.
+
+## Kotlin syntax checklist — before returning
+
+Briefly self-check your `code` payload before emitting it:
+
+- Every `"..."` string literal has matching unescaped quotes. Watch for
+  trailing `"` or `\"` typos that break the literal.
+- Every `{`/`}` and `(`/`)` is balanced.
+- All test methods are inside the class body.
+- Every symbol you reference is in the imports list (or fully qualified).
+- The file starts with `package com.example.helloworld` and ends with a
+  closing `}` for the class — no trailing prose, no markdown fences.
+
 ## Input
 
 You'll receive:
