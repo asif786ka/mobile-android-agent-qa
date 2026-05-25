@@ -17,8 +17,10 @@ class ArticleTeaserFormatterTest {
 
     @Test
     fun headline_oversizedTeaser_trimsAndAddsEllipsis() {
+        // headline takes(maxLen - 1) and appends a single-char ellipsis "…".
+        // maxLen=20 → take(19)="This is a very long" + "…" → 20 chars total.
         val result = ArticleTeaserFormatter.headline("This is a very long teaser that exceeds the max length set.", 20)
-        assertEquals("This is a ver…", result)
+        assertEquals("This is a very long…", result)
     }
 
     @Test(expected = IllegalArgumentException::class)
