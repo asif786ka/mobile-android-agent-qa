@@ -109,6 +109,18 @@ class SearchQuerySanitizerTest {
     }
 
     @Test
+    fun sanitize_spacelessLongInput_truncatesToMaxLen() {
+        val result = SearchQuerySanitizer.sanitize("abcdefghij", 5)
+        assertEquals("abcde", result)
+    }
+
+    @Test
+    fun sanitize_spacelessLongInput_exceedingMaxLen_truncatesCorrectly() {
+        val result = SearchQuerySanitizer.sanitize("abcdefghij", 5)
+        assertEquals("abcde", result)
+    }
+
+    @Test
     fun isValid_nonEmptyInput_returnsTrue() {
         val result = SearchQuerySanitizer.isValid("  Hello World!  ")
         assertEquals(true, result)
@@ -130,5 +142,11 @@ class SearchQuerySanitizerTest {
     fun isValid_inputWithOnlyPunctuation_returnsFalse() {
         val result = SearchQuerySanitizer.isValid("!!!??")
         assertEquals(false, result)
+    }
+
+    @Test
+    fun sanitize_spacelessSingleWordInput_exceedingMaxLen_truncatesCorrectly() {
+        val result = SearchQuerySanitizer.sanitize("abcdefghij", 5)
+        assertEquals("abcde", result)
     }
 }
