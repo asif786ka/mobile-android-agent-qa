@@ -181,6 +181,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--findings-file", help="Local JSON file with findings (skip GitHub).")
     p.add_argument("--dry-run", action="store_true", help="Don't write files or open PR.")
     p.add_argument("--max", type=int, default=5, help="Max tests to generate per run.")
+    p.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite existing test files (used by the fix-retry loop in CI).",
+    )
     return p.parse_args()
 
 
@@ -215,7 +220,7 @@ def main() -> int:
             print(f"\n----- {g.path} -----\n{g.code}\n")
         return 0
 
-    written = write_tests(valid, REPO_ROOT, overwrite=False)
+    written = write_tests(valid, REPO_ROOT, overwrite=args.overwrite)
     print(f"Wrote {len(written)} test file(s).")
 
     # 4. If in CI, commit + open follow-up PR

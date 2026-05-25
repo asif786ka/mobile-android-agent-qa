@@ -4,10 +4,17 @@ name: AI Mobile QA Review
 #   1. Claude reviews the PR diff and posts a review comment.
 #   2. If Claude flagged any missing tests, OpenAI generates Kotlin test files.
 #   3. We run ./gradlew testDebugUnitTest to verify the generated tests pass.
-#   4. If they pass, the bot commits them directly to the PR's source branch
-#      (no follow-up PR — the tests land in the same PR).
-#   5. If they fail, the bot posts a comment explaining what went wrong and
-#      does NOT commit anything.
+#   4. If they fail, the bot asks the generator to regenerate / fix them and
+#      re-runs the suite. This repeats up to MAX_FIX_ATTEMPTS times
+#      (configurable via the `MAX_FIX_ATTEMPTS` repo/org variable, default 2).
+#   5. The bot then commits the generated tests to the PR's source branch
+#      regardless of whether the final test run passed — the AI's work is
+#      preserved on the PR, and a status comment is posted explaining the
+#      final outcome (pass after N fixes, or still failing after MAX retries).
+#   6. UI tests are NOT booted here (an emulator would add ~5-10 min per PR).
+#      They are verified separately by android-ci.yml's instrumented-tests job
+#      against the bot's commit. If a generated UI test is broken, you'll see
+#      a red Compose UI check on the auto-commit and can revert it.
 #
 # Loop prevention: this workflow skips itself when the latest commit was made
 # by github-actions[bot] (i.e., our own auto-commit). Without this guard,
@@ -27,6 +34,12 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+
+    env:
+      # Number of times the bot will ask the generator to fix failing unit
+      # tests before committing anyway. Override by creating a repo or org
+      # variable named MAX_FIX_ATTEMPTS.
+      MAX_FIX_ATTEMPTS: ${{ vars.MAX_FIX_ATTEMPTS || '2' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -107,7 +120,7 @@ jobs:
           git status --short -- android/app/src/test/ android/app/src/androidTest/ || true
 
       # ----------------------------------------------------------------------
-      # 3. Verify the generated tests with gradle
+      # 3. Verify the generated tests with gradle, with an AI fix-retry loop
       # ----------------------------------------------------------------------
       - name: Set up JDK 17
         if: steps.review.outputs.has-findings == 'true'
@@ -129,12 +142,60 @@ jobs:
           fi
           chmod +x ./gradlew
 
-      - name: Run unit tests (verify generated unit-test code)
+      # Runs ./gradlew testDebugUnitTest. If it fails, asks the generator to
+      # regenerate / fix the test files (with --overwrite) and retries, up to
+      # MAX_FIX_ATTEMPTS times. The step itself always exits 0 — the final
+      # status is reported via outputs so we can both commit the bot's work
+      # AND leave an honest status comment on the PR.
+      - name: Run unit tests with AI fix-retry loop
         if: steps.review.outputs.has-findings == 'true'
         id: unit_tests
-        working-directory: android
-        run: ./gradlew testDebugUnitTest --stacktrace
-        continue-on-error: true
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL:   ${{ vars.OPENAI_MODEL || 'gpt-4o-mini' }}
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_TRACING: ${{ secrets.LANGSMITH_API_KEY && 'true' || 'false' }}
+          LANGSMITH_PROJECT: ${{ vars.LANGSMITH_PROJECT || 'mobile-qa-agent' }}
+        run: |
+          set +e
+          max="${MAX_FIX_ATTEMPTS:-2}"
+          echo "Max AI fix attempts after initial failure: $max"
+
+          # Initial test run
+          pushd android > /dev/null
+          ./gradlew testDebugUnitTest --stacktrace
+          status=$?
+          popd > /dev/null
+
+          attempt=0
+          while [ "$status" -ne 0 ] && [ "$attempt" -lt "$max" ]; do
+            attempt=$((attempt + 1))
+            echo "::group::AI fix attempt $attempt of $max"
+            pushd mobile-qa-agent > /dev/null
+            # --overwrite lets the generator replace the failing files we just wrote.
+            python generate_tests.py \
+              --findings-file artifacts/findings.json \
+              --max 5 \
+              --overwrite || true
+            popd > /dev/null
+
+            pushd android > /dev/null
+            ./gradlew testDebugUnitTest --stacktrace
+            status=$?
+            popd > /dev/null
+            echo "::endgroup::"
+          done
+
+          echo "fix_attempts=$attempt" >> "$GITHUB_OUTPUT"
+          if [ "$status" -eq 0 ]; then
+            echo "tests_passed=true"  >> "$GITHUB_OUTPUT"
+            echo "Unit tests passed after $attempt fix attempt(s)."
+          else
+            echo "tests_passed=false" >> "$GITHUB_OUTPUT"
+            echo "Unit tests still failing after $attempt fix attempt(s). Committing anyway."
+          fi
+          # Never fail the step — we want to commit and comment regardless.
+          exit 0
 
       # UI tests are NOT booted here — booting an emulator inside this workflow
       # would add ~5-10 min per PR. Instead we rely on android-ci.yml's
@@ -144,12 +205,12 @@ jobs:
       # bot's commit and can revert it.
 
       # ----------------------------------------------------------------------
-      # 4a. Commit if unit tests pass — UI tests are committed unverified
+      # 4. Always commit the generated tests to the PR branch, even if the
+      #    unit tests are still failing after MAX_FIX_ATTEMPTS retries. The
+      #    PR comment below makes the final outcome explicit.
       # ----------------------------------------------------------------------
       - name: Commit generated tests to the PR branch
-        if: |
-          steps.review.outputs.has-findings == 'true' &&
-          steps.unit_tests.outcome == 'success'
+        if: steps.review.outputs.has-findings == 'true'
         run: |
           git config user.email "actions@github.com"
           git config user.name  "github-actions[bot]"
@@ -162,40 +223,65 @@ jobs:
             exit 0
           fi
 
-          git commit -m "🤖 AI-generated tests for missing coverage
+          PASSED="${{ steps.unit_tests.outputs.tests_passed }}"
+          ATTEMPTS="${{ steps.unit_tests.outputs.fix_attempts }}"
+
+          if [ "$PASSED" = "true" ]; then
+            MSG="🤖 AI-generated tests for missing coverage
 
           Generated by the AI Mobile QA Review workflow after Claude flagged
-          missing test coverage. Verified locally on CI before committing."
+          missing test coverage. Verified by ./gradlew testDebugUnitTest on CI
+          (fix attempts: ${ATTEMPTS})."
+          else
+            MSG="🤖 AI-generated tests for missing coverage (unit tests still failing)
 
+          Generated by the AI Mobile QA Review workflow after Claude flagged
+          missing test coverage. The bot retried ${ATTEMPTS} time(s) via the
+          generator and ./gradlew testDebugUnitTest is still failing. Committing
+          anyway so the work-in-progress is visible on the PR — please review."
+          fi
+
+          git commit -m "$MSG"
           git push origin "HEAD:${{ github.event.pull_request.head.ref }}"
 
       # ----------------------------------------------------------------------
-      # 4b. If unit tests fail, comment on the PR and do NOT commit anything.
-      #
-      # We don't gate on UI tests here — they're verified by android-ci.yml
-      # on the bot's commit. If a generated UI test is broken, you'll see a
-      # red Compose UI check on the auto-commit and can revert it.
+      # 5. Post a status comment on the PR with the final outcome
       # ----------------------------------------------------------------------
-      - name: Comment on PR if generated unit tests fail
-        if: |
-          steps.review.outputs.has-findings == 'true' &&
-          steps.unit_tests.outcome == 'failure'
+      - name: Comment on PR with test outcome
+        if: steps.review.outputs.has-findings == 'true'
         uses: actions/github-script@v7
+        env:
+          TESTS_PASSED:     ${{ steps.unit_tests.outputs.tests_passed }}
+          FIX_ATTEMPTS:     ${{ steps.unit_tests.outputs.fix_attempts }}
+          MAX_FIX_ATTEMPTS: ${{ env.MAX_FIX_ATTEMPTS }}
         with:
           script: |
-            const body = [
-              '### 🤖 AI test generator: generated unit tests do not pass',
-              '',
-              'Claude flagged missing test coverage and OpenAI generated test',
-              'files, but `./gradlew testDebugUnitTest` failed. The bot is **not**',
-              'committing the generated tests.',
-              '',
-              'Check the workflow logs for the failing output, then either fix the',
-              'generated code manually or iterate on the agent prompts in',
-              '`mobile-qa-agent/prompts/`.',
-              '',
-              '(UI tests are verified separately by the Android CI workflow.)',
-            ].join('\n');
+            const passed = process.env.TESTS_PASSED === 'true';
+            const attempts = process.env.FIX_ATTEMPTS || '0';
+            const max = process.env.MAX_FIX_ATTEMPTS || '2';
+
+            const body = passed
+              ? [
+                  '### 🤖 AI test generator: unit tests pass',
+                  '',
+                  `Generated tests and verified \`./gradlew testDebugUnitTest\` after **${attempts}** AI fix attempt(s) (limit: ${max}).`,
+                  'The bot committed the changes to this PR branch.',
+                  '',
+                  '_(UI tests are verified separately by the Android CI workflow on the bot\'s commit.)_',
+                ].join('\n')
+              : [
+                  `### 🤖 AI test generator: unit tests still failing after ${max} fix attempt(s)`,
+                  '',
+                  'The bot generated tests, ran `./gradlew testDebugUnitTest`, and asked the generator',
+                  `to fix the failures **${attempts}** time(s). The suite is still red.`,
+                  '',
+                  'Per workflow policy, the bot committed the generated tests anyway so the AI\'s work-in-progress',
+                  'is visible on this PR. Please review and finish the remaining failures manually, or iterate',
+                  'on the agent prompts in `mobile-qa-agent/prompts/`.',
+                  '',
+                  '_(UI tests are verified separately by the Android CI workflow on the bot\'s commit.)_',
+                ].join('\n');
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
