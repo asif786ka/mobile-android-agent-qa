@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 
-const val HELLO_TEXT_TAG = "hello_text"
+const val HELLO_TEXT_TAG = "hello_text1"
 
 @Composable
 fun HelloScreen(name: String = Greeting.DEFAULT_NAME) {
