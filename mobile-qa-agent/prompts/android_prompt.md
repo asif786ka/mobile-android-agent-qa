@@ -56,3 +56,10 @@ Return **only** valid JSON, no prose, no Markdown fences. Schema:
 
 If a category has no findings, return an empty array — never omit a key.
 Never return prose outside the JSON.
+
+**Critical formatting rules:**
+- Your very first output character MUST be `{`.
+- Your very last output character MUST be `}`.
+- Do NOT wrap the JSON in ```json ... ``` fences.
+- Do NOT write "Here is the JSON:" or any preamble.
+- Do NOT add commentary after the closing `}`.

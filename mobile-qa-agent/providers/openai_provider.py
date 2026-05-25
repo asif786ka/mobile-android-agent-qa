@@ -15,7 +15,16 @@ class OpenAIProvider(LLMProvider):
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
             raise RuntimeError("OPENAI_API_KEY is not set.")
-        self._client = OpenAI(api_key=api_key)
+
+        client = OpenAI(api_key=api_key)
+        if os.environ.get("LANGSMITH_TRACING", "").lower() == "true":
+            try:
+                from langsmith.wrappers import wrap_openai
+                client = wrap_openai(client)
+            except Exception:
+                pass
+        self._client = client
+
         self._model = model or os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
     def generate(self, prompt: str, *, max_tokens: int = 2048) -> str:

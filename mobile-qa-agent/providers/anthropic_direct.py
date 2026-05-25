@@ -15,7 +15,18 @@ class AnthropicProvider(LLMProvider):
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
             raise RuntimeError("ANTHROPIC_API_KEY is not set.")
-        self._client = anthropic.Anthropic(api_key=api_key)
+
+        client = anthropic.Anthropic(api_key=api_key)
+        # Wrap with LangSmith tracing if langsmith is installed AND tracing is on.
+        # Falls through silently if either isn't true.
+        if os.environ.get("LANGSMITH_TRACING", "").lower() == "true":
+            try:
+                from langsmith.wrappers import wrap_anthropic
+                client = wrap_anthropic(client)
+            except Exception:
+                pass
+        self._client = client
+
         self._model = model or os.environ.get(
             "ANTHROPIC_MODEL", "claude-sonnet-4-6"
         )

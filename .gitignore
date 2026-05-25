@@ -24,6 +24,11 @@ mobile-qa-agent/.venv/
 mobile-qa-agent/*.egg-info/
 mobile-qa-agent/.pytest_cache/
 
+# --- Secrets / env ---
+.env
+mobile-qa-agent/.env
+*.env.local
+
 # --- OS / editors ---
 .DS_Store
 Thumbs.db

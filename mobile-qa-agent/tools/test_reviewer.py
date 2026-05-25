@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -35,14 +36,23 @@ def _extract_json(raw: str) -> dict[str, Any]:
     # Strip ```json ... ``` if present
     fence = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", raw, re.DOTALL)
     candidate = fence.group(1) if fence else raw
-    # Find first {...} block
+    # Find first {...} block (greedy: matches outer braces)
     if not candidate.startswith("{"):
         m = re.search(r"\{.*\}", candidate, re.DOTALL)
         if m:
             candidate = m.group(0)
     try:
         return json.loads(candidate)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as err:
+        # Visibility: dump the raw response to stderr so CI logs show what
+        # actually came back. Truncate to 1500 chars so we don't spam logs
+        # on huge responses.
+        print(
+            f"[reviewer] JSON parse failed ({err}). "
+            f"Raw response (first 1500 chars):\n{raw[:1500]}",
+            file=sys.stderr,
+            flush=True,
+        )
         return {"_raw": raw, "_parse_error": True}
 
 
@@ -58,20 +68,43 @@ def review(provider: LLMProvider, platform: str, detection: dict, diff: str) -> 
         f"```diff\n{diff}\n```\n"
     )
 
-    raw = provider.generate(prompt, max_tokens=int(os.environ.get("MAX_TOKENS", "2048")))
+    # 4096 is enough for a thorough reviewer response on a multi-file diff.
+    # Override with MAX_TOKENS env var if you hit truncation on huge PRs.
+    raw = provider.generate(prompt, max_tokens=int(os.environ.get("MAX_TOKENS", "4096")))
     parsed = _extract_json(raw)
     parsed.setdefault("provider", provider.name)
     parsed.setdefault("platform", platform)
     return parsed
 
 
+# Marker used by the test generator to find the agent's structured findings
+# inside a PR comment. Format:
+#   <!-- AI-QA-FINDINGS-JSON: {...json...} -->
+FINDINGS_MARKER = "AI-QA-FINDINGS-JSON"
+
+
 def format_comment(result: dict) -> str:
-    """Render the JSON result into a Markdown comment body."""
+    """Render the JSON result into a Markdown comment body.
+
+    Also appends a hidden HTML comment containing the raw findings JSON so
+    downstream tools (like the OpenAI test generator) can recover the
+    structured data from the PR thread.
+    """
     if result.get("_parse_error"):
+        raw = result.get("_raw") or ""
+        truncated_note = (
+            "\n\n⚠️ Response appears truncated (no closing `}`). "
+            "Try bumping `MAX_TOKENS` (currently defaulting to 4096)."
+            if "{" in raw and "}" not in raw
+            else ""
+        )
         return (
             "### 🤖 Mobile QA Agent\n\n"
-            "Could not parse a structured response. Raw model output:\n\n"
-            "```\n" + (result.get("_raw") or "")[:4000] + "\n```"
+            "Could not parse a structured response — the reviewer "
+            f"will need re-running.{truncated_note}\n\n"
+            "<details><summary>Raw model output (first 4000 chars)</summary>\n\n"
+            "```\n" + raw[:4000] + "\n```\n\n"
+            "</details>"
         )
 
     lines: list[str] = [f"### 🤖 Mobile QA Agent ({result.get('platform', '?')})"]
@@ -110,4 +143,28 @@ def format_comment(result: dict) -> str:
                 lines.append(f"- {s}")
 
     lines.append(f"\n_Provider: `{result.get('provider', '?')}`_")
+    lines.append(
+        "\n_Tip: comment `/generate-tests` on this PR to auto-generate "
+        "missing tests via OpenAI._"
+    )
+
+    # Hidden machine-readable copy of the findings for downstream tools.
+    findings_json = json.dumps(result, separators=(",", ":"))
+    lines.append(f"\n<!-- {FINDINGS_MARKER}: {findings_json} -->")
+
     return "\n".join(lines)
+
+
+def extract_findings_from_comment(comment_body: str) -> dict | None:
+    """Recover the structured findings JSON embedded by format_comment().
+
+    Returns None if no marker is found.
+    """
+    pattern = rf"<!--\s*{re.escape(FINDINGS_MARKER)}:\s*(\{{.*?\}})\s*-->"
+    m = re.search(pattern, comment_body, re.DOTALL)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(1))
+    except json.JSONDecodeError:
+        return None

@@ -8,7 +8,7 @@
 # Optional env vars:
 #   GH_USER       Your GitHub username (default: asif786ka)
 #   REPO_NAME     Repo to create / push to (default: mobile-android-agent-qa)
-#   DEMO_BRANCH   Branch name for the demo PR (default: demo/add-farewell)
+#   DEMO_BRANCH   Branch name for the demo PR (default: demo/add-welcomeonboard)
 #
 # After this finishes:
 #   1. Revoke the PAT at https://github.com/settings/tokens — it has been
@@ -20,7 +20,7 @@ set -euo pipefail
 : "${GH_TOKEN:?Set GH_TOKEN to a GitHub PAT with 'repo' scope}"
 GH_USER="${GH_USER:-asif786ka}"
 REPO_NAME="${REPO_NAME:-mobile-android-agent-qa}"
-DEMO_BRANCH="${DEMO_BRANCH:-demo/add-farewell}"
+DEMO_BRANCH="${DEMO_BRANCH:-demo/add-welcomeonboard}"
 FULL_REPO="$GH_USER/$REPO_NAME"
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -88,44 +88,44 @@ git push -u -q origin main
 echo "  → pushed"
 
 # ----------------------------------------------------------------------------
-# 5. Create demo branch with Farewell.kt (no test) so the AI agent has
+# 5. Create demo branch with WelcomeOnboard.kt (no test) so the AI agent has
 #    something to flag. The file is already on main from the initial commit
 #    if you ran this after Claude's setup, so this branch's only diff is
 #    intentional — we re-add it from main to make the PR meaningful.
 # ----------------------------------------------------------------------------
 echo "▸ Creating demo branch $DEMO_BRANCH..."
-# If Farewell.kt was already on main, move it to the demo branch only so
+# If WelcomeOnboard.kt was already on main, move it to the demo branch only so
 # main → demo diff actually shows the new file.
-FAREWELL=android/app/src/main/java/com/example/helloworld/Farewell.kt
-if git ls-files --error-unmatch "$FAREWELL" >/dev/null 2>&1; then
+DEMO_FILE=android/app/src/main/java/com/example/helloworld/WelcomeOnboard.kt
+if git ls-files --error-unmatch "$DEMO_FILE" >/dev/null 2>&1; then
   # Already on main — drop from main, push, then add back on demo branch
-  git rm -q "$FAREWELL"
-  git commit -q -m "Remove Farewell stub from main (will live on demo branch)"
+  git rm -q "$DEMO_FILE"
+  git commit -q -m "Remove WelcomeOnboard stub from main (will live on demo branch)"
   git push -q origin main
 fi
 
 git checkout -q -b "$DEMO_BRANCH"
 
-# Re-create Farewell.kt on the demo branch
-mkdir -p "$(dirname "$FAREWELL")"
-cat > "$FAREWELL" <<'EOF'
+# Re-create WelcomeOnboard.kt on the demo branch
+mkdir -p "$(dirname "$DEMO_FILE")"
+cat > "$DEMO_FILE" <<'EOF'
 package com.example.helloworld
 
 /**
  * Companion to Greeting. Intentionally shipped without a unit test so the
  * AI QA agent has something concrete to flag in the demo PR.
  */
-object Farewell {
-    fun goodbye(name: String = Greeting.DEFAULT_NAME): String {
+object WelcomeOnboard {
+    fun welcome(name: String = Greeting.DEFAULT_NAME): String {
         val trimmed = name.trim()
         val who = if (trimmed.isEmpty()) Greeting.DEFAULT_NAME else trimmed
-        return "Goodbye $who"
+        return "Welcome aboard, $who!"
     }
 }
 EOF
 
-git add "$FAREWELL"
-git commit -q -m "Add Farewell.goodbye (no test — for AI agent demo)"
+git add "$DEMO_FILE"
+git commit -q -m "Add WelcomeOnboard.welcome (no test — for AI agent demo)"
 git push -u -q origin "$DEMO_BRANCH"
 echo "  → pushed $DEMO_BRANCH"
 
@@ -133,12 +133,12 @@ echo "  → pushed $DEMO_BRANCH"
 # 6. Open the demo PR.
 # ----------------------------------------------------------------------------
 echo "▸ Opening demo PR..."
-PR_BODY='This PR intentionally adds a new public function (`Farewell.goodbye`) without a unit test so the AI QA agent has something concrete to flag.\n\nExpect a review comment from the **AI Mobile QA Review** workflow listing:\n- missing unit test for `Farewell.goodbye()`\n- missing negative cases (blank input, trimming)\n- a suggested `FarewellTest` mirroring `GreetingTest`'
+PR_BODY='This PR intentionally adds a new public function (`WelcomeOnboard.welcome`) without a unit test so the AI QA agent has something concrete to flag.\n\nExpect a review comment from the **AI Mobile QA Review** workflow listing:\n- missing unit test for `WelcomeOnboard.welcome()`\n- missing negative cases (blank input, trimming)\n- a suggested `WelcomeOnboardTest` mirroring `GreetingTest`'
 
 PR_RESP=$(curl -sS -X POST "${auth_header[@]}" \
   "$GH_API/repos/$FULL_REPO/pulls" \
   -d "{
-    \"title\": \"Demo: add Farewell.goodbye (no test)\",
+    \"title\": \"Demo: add WelcomeOnboard.welcome (no test)\",
     \"head\": \"$DEMO_BRANCH\",
     \"base\": \"main\",
     \"body\": \"$PR_BODY\"
