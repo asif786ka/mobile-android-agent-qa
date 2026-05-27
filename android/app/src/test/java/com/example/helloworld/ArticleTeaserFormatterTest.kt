@@ -2,6 +2,8 @@ package com.example.helloworld
 
 import org.junit.Test
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 
 class ArticleTeaserFormatterTest {
     @Test
@@ -54,5 +56,16 @@ class ArticleTeaserFormatterTest {
         )
         assertEquals("This is a very long…", result.text)
         assertEquals(true, result.wasTruncated)
+    }
+
+    @Test
+    fun headlineResult_equalsHashCodeContract() {
+        val result1 = ArticleTeaserFormatter.HeadlineResult("a", false)
+        val result2 = ArticleTeaserFormatter.HeadlineResult("a", false)
+        val result3 = ArticleTeaserFormatter.HeadlineResult("a", true)
+
+        assertTrue(result1 == result2)
+        assertFalse(result1 == result3)
+        assertFalse(result2 == result3)
     }
 }

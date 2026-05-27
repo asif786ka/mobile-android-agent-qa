@@ -103,4 +103,14 @@ class ArticleTeaserScreenUiTest {
         composeRule.onNodeWithTag(ARTICLE_TEASER_TRUNCATED_TAG)
             .assertDoesNotExist()
     }
+
+    @Test
+    fun articleTeaser_displaysDefaultTeaserForEmptyInputAndNoTruncatedTag() {
+        composeRule.setContent { ArticleTeaserScreen(teaser = "") }
+        composeRule.onNodeWithTag(ARTICLE_TEASER_TAG)
+            .assertIsDisplayed()
+            .assertTextEquals(ArticleTeaserFormatter.DEFAULT_TEASER)
+        composeRule.onNodeWithTag(ARTICLE_TEASER_TRUNCATED_TAG)
+            .assertDoesNotExist()
+    }
 }
