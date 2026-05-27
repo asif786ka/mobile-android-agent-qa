@@ -9,20 +9,22 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 const val SEARCH_INPUT_LABEL_TAG = "search_input_label"
 const val SEARCH_SANITIZED_TAG = "search_sanitized_text"
+const val SEARCH_TRUNCATED_HELPER_TAG = "search_truncated_helper"
 
 @Composable
 fun SearchScreen(
     rawQuery: String = "",
     maxLen: Int = SearchQuerySanitizer.DEFAULT_MAX_LEN,
 ) {
-    val sanitized = SearchQuerySanitizer.sanitize(rawQuery, maxLen)
-    val display = if (sanitized.isEmpty()) "Start typing to search…" else sanitized
+    val sanitized = SearchQuerySanitizer.sanitizeWithMetadata(rawQuery, maxLen)
+    val display = if (sanitized.text.isEmpty()) "Start typing to search…" else sanitized.text
 
     Column(
         modifier = Modifier
@@ -43,6 +45,18 @@ fun SearchScreen(
                 .padding(top = 8.dp)
                 .testTag(SEARCH_SANITIZED_TAG),
         )
+
+        if (sanitized.wasTruncated && sanitized.text.isNotEmpty()) {
+            Text(
+                text = "Showing first ${sanitized.text.length} characters (max $maxLen).",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.tertiary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .testTag(SEARCH_TRUNCATED_HELPER_TAG),
+            )
+        }
     }
 }
 

@@ -20,6 +20,11 @@ object SearchQuerySanitizer {
     /** Returned when the input is null, empty, or only whitespace/punctuation. */
     const val EMPTY_QUERY: String = ""
 
+    data class SanitizedQuery(
+        val text: String,
+        val wasTruncated: Boolean,
+    )
+
     private val PUNCTUATION_REGEX = Regex("""[\p{Punct}]""")
     private val WHITESPACE_RUN_REGEX = Regex("""\s+""")
 
@@ -33,6 +38,21 @@ object SearchQuerySanitizer {
 
         val lowered = collapsed.lowercase(java.util.Locale.ROOT)
         return truncateToMaxLen(lowered, maxLen)
+    }
+
+    fun sanitizeWithMetadata(raw: String?, maxLen: Int = DEFAULT_MAX_LEN): SanitizedQuery {
+        require(maxLen > 0) { "maxLen must be positive" }
+        if (raw.isNullOrBlank()) return SanitizedQuery(text = EMPTY_QUERY, wasTruncated = false)
+
+        val noPunct = PUNCTUATION_REGEX.replace(raw, " ")
+        val collapsed = WHITESPACE_RUN_REGEX.replace(noPunct, " ").trim()
+        if (collapsed.isEmpty()) return SanitizedQuery(text = EMPTY_QUERY, wasTruncated = false)
+
+        val lowered = collapsed.lowercase(java.util.Locale.ROOT)
+        if (lowered.length <= maxLen) return SanitizedQuery(text = lowered, wasTruncated = false)
+
+        val truncated = truncateToMaxLen(lowered, maxLen)
+        return SanitizedQuery(text = truncated, wasTruncated = truncated.length < lowered.length)
     }
 
     private fun truncateToMaxLen(lowered: String, maxLen: Int): String {
