@@ -2,6 +2,7 @@ package com.example.helloworld
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import org.junit.Rule
@@ -30,5 +31,15 @@ class HelloScreenUiTest {
             .onNodeWithTag(HELLO_TEXT_TAG)
             .assertIsDisplayed()
             .assertTextEquals("Hello Asif")
+    }
+
+    @Test
+    fun toastButton_isDisplayed_andClickable() {
+        composeRule.setContent { HelloScreen() }
+
+        composeRule
+            .onNodeWithTag(HELLO_TOAST_BUTTON_TAG)
+            .assertIsDisplayed()
+            .performClick()
     }
 }
