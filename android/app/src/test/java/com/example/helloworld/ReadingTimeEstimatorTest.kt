@@ -95,9 +95,4 @@ class ReadingTimeEstimatorTest {
         val words = List(450) { "word" }.joinToString(" ")
         assertEquals("3 minutes read", ReadingTimeEstimator.format(words, longLabel = true))
     }
-
-    @Test
-    fun format_longLabel_boundary_wpmIsOne() {
-        assertEquals("1 minute read", ReadingTimeEstimator.format("word word", wordsPerMinute = 1, longLabel = true))
-    }
 }

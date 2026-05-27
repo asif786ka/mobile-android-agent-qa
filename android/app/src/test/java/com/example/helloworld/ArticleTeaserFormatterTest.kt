@@ -38,4 +38,21 @@ class ArticleTeaserFormatterTest {
         val result = ArticleTeaserFormatter.headline("Hello World!", 50)
         assertEquals("Hello World!", result)
     }
+
+    @Test
+    fun headlineWithMetadata_shortTeaser_notTruncated() {
+        val result = ArticleTeaserFormatter.headlineWithMetadata("Hello World!", 50)
+        assertEquals("Hello World!", result.text)
+        assertEquals(false, result.wasTruncated)
+    }
+
+    @Test
+    fun headlineWithMetadata_oversizedTeaser_isTruncated() {
+        val result = ArticleTeaserFormatter.headlineWithMetadata(
+            "This is a very long teaser that exceeds the max length set.",
+            20,
+        )
+        assertEquals("This is a very long…", result.text)
+        assertEquals(true, result.wasTruncated)
+    }
 }
